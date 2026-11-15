@@ -1,0 +1,55 @@
+{
+  "name": "mcp-leash",
+  "version": "0.1.0",
+  "description": "Find the dangerous tools in your MCP servers and lock them down in Claude Code with one command.",
+  "type": "module",
+  "bin": {
+    "mcp-leash": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "mcp",
+    "claude-code",
+    "security",
+    "permissions",
+    "hooks",
+    "model-context-protocol"
+  ],
+  "license": "MIT",
+  "author": "codersanjay3",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sanjaysubramanian/mcp-leash.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sanjaysubramanian/mcp-leash/issues"
+  },
+  "homepage": "https://github.com/sanjaysubramanian/mcp-leash#readme",
+  "scripts": {
+    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsup",
+    "test": "vitest run",
+    "lint": "biome check src test",
+    "format": "biome check --write src test",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run lint && npm test && npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.7",
+    "@types/node": "^22.19.0",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.6",
+    "vitest": "^3.2.7"
+  }
+}

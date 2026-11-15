@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+*.tgz
+.vscode/
+.idea/
+
+# Fixture dirs must stay clean even if someone runs lock --scope project there
+test/fixtures/**/.claude/
