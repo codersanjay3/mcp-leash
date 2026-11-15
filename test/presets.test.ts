@@ -40,6 +40,17 @@ describe("matchPreset", () => {
     );
   });
 
+  it("matches the git server by key or command", () => {
+    expect(matchPreset("git", { command: "x" })?.id).toBe("git");
+    expect(matchPreset("mcp-server-git", { command: "x" })?.id).toBe("git");
+    expect(matchPreset("server-git", { command: "x" })?.id).toBe("git");
+    expect(matchPreset("x", { command: "mcp-server-git", args: ["stdio"] })?.id).toBe("git");
+    // The GitHub server still gets the GitHub preset, not the git one.
+    expect(
+      matchPreset("x", { command: "npx", args: ["-y", "@modelcontextprotocol/server-github"] })?.id,
+    ).toBe("github");
+  });
+
   it("returns undefined for unknown servers", () => {
     expect(matchPreset("weather", { command: "node", args: ["weather.js"] })).toBeUndefined();
   });
@@ -50,6 +61,7 @@ describe("preset coverage", () => {
     const ids = PRESETS.map((p) => p.id);
     for (const id of [
       "github",
+      "git",
       "filesystem",
       "slack",
       "postgres",
@@ -80,6 +92,20 @@ describe("preset coverage", () => {
     for (const p of PRESETS) {
       for (const t of presetOfflineTools(p)) expect(t).not.toContain("*");
     }
+  });
+
+  it("git preset flags reset as critical and lists its tools offline", () => {
+    const git = PRESETS.find((p) => p.id === "git");
+    if (!git) throw new Error("missing");
+    const tools = presetOfflineTools(git);
+    expect(tools).toContain("git_reset");
+    expect(tools).toContain("git_commit");
+    expect(tools).toContain("git_add");
+    expect(tools).toContain("git_checkout");
+    expect(tools).toContain("git_create_branch");
+    expect(tools).toContain("git_status");
+    expect(tools).toContain("git_log");
+    expect(tools).toContain("git_show");
   });
 
   it("github preset flags the dangerous ones", () => {

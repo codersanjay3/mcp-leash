@@ -140,6 +140,22 @@ describe("classifyTool: description tiebreaker", () => {
 });
 
 describe("classifyTool: presets", () => {
+  it("classifies the git preset tools", () => {
+    const git = preset("git");
+    expect(classifyTool({ name: "git_reset" }, git)).toMatchObject({
+      risk: "critical",
+      source: "preset",
+    });
+    for (const name of ["git_commit", "git_add", "git_checkout", "git_create_branch"]) {
+      const c = classifyTool({ name }, git);
+      expect(c.risk, name).toBe("write");
+      expect(c.source, name).toBe("preset");
+    }
+    for (const name of ["git_status", "git_diff", "git_diff_staged", "git_log", "git_show"]) {
+      expect(classifyTool({ name }, git).risk, name).toBe("read");
+    }
+  });
+
   it("preset overrides annotations and heuristics", () => {
     const gh = preset("github");
     const c = classifyTool({ name: "merge_pull_request", annotations: { readOnlyHint: true } }, gh);

@@ -1,6 +1,7 @@
 import { normalizeServerName } from "../names.js";
 import type { ArgRule, ServerConfig } from "../types.js";
 import { filesystem } from "./filesystem.js";
+import { git } from "./git.js";
 import { github } from "./github.js";
 import {
   aws,
@@ -26,6 +27,9 @@ export type { Preset } from "./types.js";
 export const PRESETS: Preset[] = [
   desktopCommander,
   github,
+  // After github: the git preset's "server-git" hint also appears in
+  // "@modelcontextprotocol/server-github".
+  git,
   filesystem,
   slack,
   supabase,
