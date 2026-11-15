@@ -4,7 +4,14 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [0.1.0] - Unreleased
+## [Unreleased]
+
+### Added
+- Preset for the Git MCP server (`mcp-server-git`, `mcp/git`): `git_reset` is critical;
+  `git_commit`, `git_add`, `git_checkout`, `git_create_branch` and `git_merge` are write;
+  status, diff, log, show, branch and remote are read.
+
+## [0.1.0] - 2026-11-14
 
 ### Added
 - `log --since <duration>`: filter the audit log by a recent interval, for example 1h or 2d.
@@ -17,6 +24,8 @@ All notable changes to this project are documented here. The format follows
 - `hook`: dependency-free PreToolUse hook (`dist/hook.mjs`) with argument rules from
   `rules.json`, redacted audit log and fail-open behaviour (`failClosed` opt-in).
 - `log`: pretty or JSON view of the audit log.
+- Browser playground at https://codersanjay3.github.io/mcp-leash/ that runs the same
+  classifier and planner client-side.
 - Presets for GitHub, filesystem, Slack, Postgres, SQLite, Supabase, Stripe, Notion,
   Linear, Puppeteer, Playwright, Docker, Kubernetes, AWS, shell and Desktop Commander.
 
@@ -25,7 +34,9 @@ All notable changes to this project are documented here. The format follows
   on Ubuntu and macOS.
 
 ### Security and robustness
-- Project `.mcp.json` stdio servers are only started with `--trust-project` or an interactive yes.
+- Project `.mcp.json` servers (stdio and remote) are only started or contacted with
+  `--trust-project` or an interactive yes, so a cloned repo can't run commands or receive
+  `${VAR}`-expanded secrets.
 - Scanned servers run in their own process group and are killed with all their children; one
   10s deadline per server.
 - Settings writes follow symlinks and keep the file mode; lock validates state and hook source
@@ -33,3 +44,5 @@ All notable changes to this project are documented here. The format follows
 - Hook: per-rule error isolation, audit always attempted, 2048-char regex input cap, 800ms
   watchdog, broader redaction, audit log mode 0600.
 - `scan`/`lock` warn about enabled plugins (their MCP servers are not covered yet).
+
+[0.1.0]: https://github.com/codersanjay3/mcp-leash/releases/tag/v0.1.0

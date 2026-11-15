@@ -97,6 +97,7 @@
 ## Presets (`src/presets/*.ts`)
 - Cover at least these servers:
   - **github:** `delete_*`, `merge_pull_request`, `push_files`, `create_or_update_file`, `fork`, and similar
+  - **git:** `git_reset` → critical; commit/add/checkout/branch/merge → write
   - **filesystem**
   - **slack**
   - **postgres/sqlite/supabase:** `execute_sql`/`query` → write; drop → critical

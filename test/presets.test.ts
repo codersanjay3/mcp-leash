@@ -40,6 +40,26 @@ describe("matchPreset", () => {
     );
   });
 
+  it("matches the Git server by key and by command", () => {
+    expect(matchPreset("git", { command: "x" })?.id).toBe("git");
+    expect(
+      matchPreset("x", { command: "uvx", args: ["mcp-server-git", "--repository", "."] })?.id,
+    ).toBe("git");
+    expect(
+      matchPreset("x", { command: "docker", args: ["run", "-i", "--rm", "mcp/git"] })?.id,
+    ).toBe("git");
+  });
+
+  it("does not mistake GitHub servers for the Git server", () => {
+    expect(matchPreset("x", { command: "docker", args: ["run", "-i", "mcp/github"] })?.id).toBe(
+      "github",
+    );
+    expect(
+      matchPreset("x", { command: "npx", args: ["-y", "@modelcontextprotocol/server-github"] })?.id,
+    ).toBe("github");
+    expect(matchPreset("x", { command: "mcp-server-github" })?.id).toBe("github");
+  });
+
   it("returns undefined for unknown servers", () => {
     expect(matchPreset("weather", { command: "node", args: ["weather.js"] })).toBeUndefined();
   });
@@ -65,6 +85,7 @@ describe("preset coverage", () => {
       "aws",
       "shell",
       "desktop-commander",
+      "git",
     ]) {
       expect(ids).toContain(id);
     }

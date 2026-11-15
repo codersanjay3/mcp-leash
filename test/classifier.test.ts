@@ -160,6 +160,28 @@ describe("classifyTool: presets", () => {
     expect(c.source).toBe("verb");
   });
 
+  it("git reset is critical, commit/checkout are write, status/diff/log are read", () => {
+    const git = preset("git");
+    expect(classifyTool({ name: "git_reset" }, git).risk).toBe("critical");
+    for (const t of ["git_commit", "git_add", "git_checkout", "git_create_branch", "git_merge"]) {
+      expect(classifyTool({ name: t }, git).risk).toBe("write");
+    }
+    for (const t of [
+      "git_status",
+      "git_diff",
+      "git_diff_staged",
+      "git_diff_unstaged",
+      "git_log",
+      "git_show",
+      "git_branch",
+      "git_remote",
+    ]) {
+      const c = classifyTool({ name: t }, git);
+      expect(c.risk).toBe("read");
+      expect(c.source).toBe("preset");
+    }
+  });
+
   it("shell execute_command is critical", () => {
     expect(classifyTool({ name: "execute_command" }, preset("shell")).risk).toBe("critical");
   });

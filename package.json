@@ -20,7 +20,15 @@
     "security",
     "permissions",
     "hooks",
-    "model-context-protocol"
+    "model-context-protocol",
+    "claude",
+    "anthropic",
+    "ai-agents",
+    "ai-security",
+    "llm-security",
+    "mcp-security",
+    "agent-security",
+    "cli"
   ],
   "license": "MIT",
   "author": "codersanjay3",
