@@ -11,7 +11,7 @@ npm install
 npm run lint && npm test && npm run build
 ```
 
-Requires Node 18 or newer.
+Requires Node 20 or newer.
 
 ## Ground rules
 
@@ -38,5 +38,5 @@ by `--offline`; entries with `*` are globs. Optional `rules` are default hook ru
 
 - One topic per PR; describe what changed and why.
 - Update `CHANGELOG.md` under "Unreleased" for user-visible changes.
-- `npm run lint`, `npm test` and `npm run build` must pass (CI runs them on Node 18/20/22,
+- `npm run lint`, `npm test` and `npm run build` must pass (CI runs them on Node 20/22/24,
   Ubuntu and macOS).

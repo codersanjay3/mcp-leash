@@ -114,7 +114,7 @@
   - filesystem write/edit/move to paths outside the session `cwd` → ask
 
 ## Tech
-- TypeScript with ESM, Node ≥18.
+- TypeScript with ESM, Node ≥20.
 - Libraries: `@modelcontextprotocol/sdk`, `picocolors`, plus a tiny argument parser (`node:util parseArgs`).
 - Bundle with `tsup`:
   - `dist/cli.js` with a shebang
@@ -141,7 +141,7 @@
   - `CONTRIBUTING.md`
   - `CHANGELOG.md` (0.1.0)
   - `.github/ISSUE_TEMPLATE/{bug_report.yml,feature_request.yml,config.yml}` (config points questions to Discussions)
-  - `.github/workflows/ci.yml` (Node 18/20/22 on ubuntu and macos, `npm ci && npm run lint && npm test && npm run build`)
+  - `.github/workflows/ci.yml` (Node 20/22/24 on ubuntu and macos, `npm ci && npm run lint && npm test && npm run build`)
   - `docs/good-first-issues.md` (5 drafted issues, e.g. new presets)
   - `docs/show-hn.md` (draft)
   - `SECURITY.md`

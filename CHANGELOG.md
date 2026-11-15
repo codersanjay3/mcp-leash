@@ -19,6 +19,10 @@ All notable changes to this project are documented here. The format follows
 - Presets for GitHub, filesystem, Slack, Postgres, SQLite, Supabase, Stripe, Notion,
   Linear, Puppeteer, Playwright, Docker, Kubernetes, AWS, shell and Desktop Commander.
 
+### Requirements
+- Node 20 or newer (Node 18 reached end of life in April 2025). CI tests Node 20, 22 and 24
+  on Ubuntu and macOS.
+
 ### Security and robustness
 - Project `.mcp.json` stdio servers are only started with `--trust-project` or an interactive yes.
 - Scanned servers run in their own process group and are killed with all their children; one

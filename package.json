@@ -12,7 +12,7 @@
     "LICENSE"
   ],
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "keywords": [
     "mcp",
@@ -52,6 +52,9 @@
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "vite": "^6.4.6",
-    "vitest": "^3.2.7"
+    "vitest": "^4.1.12"
+  },
+  "overrides": {
+    "esbuild": "^0.28.2"
   }
 }
