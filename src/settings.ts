@@ -1,12 +1,16 @@
 import {
+  chmodSync,
   copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
+  realpathSync,
   renameSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { normalizeServerName } from "./discovery.js";
 import type { Level, Risk, Scope } from "./types.js";
 
 export interface HookSpec {
@@ -53,29 +57,48 @@ export function settingsPathFor(scope: Scope, home: string, project: string): st
   }
 }
 
+/** Claude Code normalizes both the server and the tool name to [A-Za-z0-9_-]. */
 export function fullToolName(server: string, tool: string): string {
-  return `mcp__${server}__${tool}`;
+  return `mcp__${normalizeServerName(server)}__${normalizeServerName(tool)}`;
 }
 
-/** Does permission rule `rule` cover tool `fullName` (exact, `mcp__srv__*`, or bare `mcp__srv`)? */
-export function ruleCovers(rule: string, fullName: string): boolean {
+/**
+ * Does permission rule `rule` cover tool `fullName` (exact, `mcp__srv__*`, or bare `mcp__srv`)?
+ * Pass the known (normalized) `server` when available: server names may contain `__`.
+ */
+export function ruleCovers(rule: string, fullName: string, server?: string): boolean {
   if (rule === fullName) return true;
   if (!rule.startsWith("mcp__") || rule.includes("(")) return false;
-  const server = fullName.split("__")[1];
-  if (server === undefined) return false;
-  return rule === `mcp__${server}` || rule === `mcp__${server}__*`;
+  const srv = server ?? fullName.split("__")[1];
+  if (srv === undefined) return false;
+  return rule === `mcp__${srv}` || rule === `mcp__${srv}__*`;
 }
 
-const anyCovers = (rules: string[], name: string) => rules.some((r) => ruleCovers(r, name));
+const anyCovers = (rules: string[], name: string, server?: string) =>
+  rules.some((r) => ruleCovers(r, name, server));
 
 export function toolStatus(
   fullName: string,
   rules: RuleSets,
+  server?: string,
 ): "denied" | "ask" | "allowed" | undefined {
-  if (anyCovers(rules.deny, fullName)) return "denied";
-  if (anyCovers(rules.ask, fullName)) return "ask";
-  if (anyCovers(rules.allow, fullName)) return "allowed";
+  if (anyCovers(rules.deny, fullName, server)) return "denied";
+  if (anyCovers(rules.ask, fullName, server)) return "ask";
+  if (anyCovers(rules.allow, fullName, server)) return "allowed";
   return undefined;
+}
+
+/** Added deny/ask rules that take precedence over (shadow) an existing user allow rule. */
+export function allowOverrides(
+  adds: { deny: string[]; ask: string[] },
+  existing: RuleSets,
+): { tool: string; rule: string }[] {
+  const out: { tool: string; rule: string }[] = [];
+  for (const tool of [...adds.deny, ...adds.ask]) {
+    const rule = existing.allow.find((r) => ruleCovers(r, tool));
+    if (rule !== undefined) out.push({ tool, rule });
+  }
+  return out;
 }
 
 export function rulesOf(settings: Settings | undefined): RuleSets {
@@ -93,7 +116,7 @@ export function combineRules(list: RuleSets[]): RuleSets {
 }
 
 export function planAdditions(
-  tools: { fullName: string; risk: Risk }[],
+  tools: { fullName: string; risk: Risk; server?: string }[],
   level: Level,
   existing: RuleSets,
 ): { deny: string[]; ask: string[] } {
@@ -103,12 +126,12 @@ export function planAdditions(
     const wantsDeny = t.risk === "critical";
     const wantsAsk = t.risk === "write" || (level === "strict" && t.risk === "unknown");
     if (wantsDeny) {
-      if (!anyCovers(existing.deny, t.fullName) && !deny.includes(t.fullName))
+      if (!anyCovers(existing.deny, t.fullName, t.server) && !deny.includes(t.fullName))
         deny.push(t.fullName);
     } else if (wantsAsk) {
       if (
-        !anyCovers(existing.deny, t.fullName) &&
-        !anyCovers(existing.ask, t.fullName) &&
+        !anyCovers(existing.deny, t.fullName, t.server) &&
+        !anyCovers(existing.ask, t.fullName, t.server) &&
         !ask.includes(t.fullName)
       ) {
         ask.push(t.fullName);
@@ -131,6 +154,30 @@ export function mergeSettings(
 ): { settings: Settings; added: LockRecord } {
   const settings = structuredClone(input) as Settings;
   const added: LockRecord = { deny: [], ask: [], hook: undefined };
+
+  const perms: unknown = settings.permissions;
+  if (
+    perms !== undefined &&
+    (perms === null || typeof perms !== "object" || Array.isArray(perms))
+  ) {
+    throw new Error("settings: `permissions` is not an object; refusing to modify it");
+  }
+  for (const key of ["deny", "ask"] as const) {
+    const cur = settings.permissions?.[key];
+    if (cur !== undefined && !Array.isArray(cur)) {
+      throw new Error(`settings: permissions.${key} is not an array; refusing to modify it`);
+    }
+  }
+  const hooksVal: unknown = settings.hooks;
+  if (hooksVal !== undefined) {
+    if (hooksVal === null || typeof hooksVal !== "object" || Array.isArray(hooksVal)) {
+      throw new Error("settings: `hooks` is not an object; refusing to modify it");
+    }
+    const pre = settings.hooks?.PreToolUse;
+    if (pre !== undefined && !Array.isArray(pre)) {
+      throw new Error("settings: hooks.PreToolUse is not an array; refusing to modify it");
+    }
+  }
 
   for (const key of ["deny", "ask"] as const) {
     const fresh = adds[key].filter((r) => !(settings.permissions?.[key] ?? []).includes(r));
@@ -198,7 +245,7 @@ export const isEmptyRecord = (r: LockRecord) =>
 /** Read a JSON object file. Missing -> {}. Invalid JSON throws (we never clobber it). */
 export function readSettingsFile(path: string): Settings {
   if (!existsSync(path)) return {};
-  const text = readFileSync(path, "utf8");
+  const text = readFileSync(path, "utf8").replace(/^\uFEFF/, "");
   if (text.trim() === "") return {};
   let v: unknown;
   try {
@@ -222,9 +269,31 @@ export function backupFile(path: string, now = new Date()): string | undefined {
   return dest;
 }
 
+/** The real path of `path` when it exists (resolves symlinks), else `path` unchanged. */
+export function canonicalPath(path: string): string {
+  try {
+    return realpathSync(path);
+  } catch {
+    return path;
+  }
+}
+
+/**
+ * Atomically write JSON. Follows symlinks (the temp file is created next to the real file and
+ * renamed onto it, so a symlinked settings.json stays a symlink) and keeps the original file
+ * mode. New files are created private (0600).
+ */
 export function writeJsonAtomic(path: string, value: unknown): void {
-  mkdirSync(dirname(path), { recursive: true });
-  const tmp = `${path}.mcp-leash.tmp-${process.pid}`;
-  writeFileSync(tmp, `${JSON.stringify(value, null, 2)}\n`);
-  renameSync(tmp, path);
+  const target = canonicalPath(path);
+  mkdirSync(dirname(target), { recursive: true });
+  let mode = 0o600;
+  try {
+    mode = statSync(target).mode & 0o7777;
+  } catch {
+    /* new file */
+  }
+  const tmp = `${target}.mcp-leash.tmp-${process.pid}`;
+  writeFileSync(tmp, `${JSON.stringify(value, null, 2)}\n`, { mode });
+  chmodSync(tmp, mode); // writeFileSync's mode is filtered by the umask
+  renameSync(tmp, target);
 }

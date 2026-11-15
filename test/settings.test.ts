@@ -1,12 +1,30 @@
-import { describe, expect, it } from "vitest";
 import {
+  chmodSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import {
+  allowOverrides,
+  fullToolName,
   type LockRecord,
   mergeRecords,
   mergeSettings,
   planAdditions,
+  readSettingsFile,
   ruleCovers,
   toolStatus,
   unmergeSettings,
+  writeJsonAtomic,
 } from "../src/settings.js";
 
 const HOOK = { matcher: "mcp__.*", command: 'node "/h/.mcp-leash/hook.mjs"' };
@@ -201,5 +219,100 @@ describe("mergeRecords", () => {
       { deny: ["a", "c"], ask: [], hook: HOOK },
     );
     expect(m).toEqual({ deny: ["a", "c"], ask: ["b"], hook: HOOK });
+  });
+});
+
+describe("writeJsonAtomic", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = realpathSync(mkdtempSync(join(tmpdir(), "leash-atomic-")));
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it("writes through a symlink instead of replacing it, keeping the target's mode", () => {
+    const real = join(dir, "dotfiles", "settings.json");
+    mkdirSync(join(dir, "dotfiles"));
+    writeFileSync(real, "{}\n", { mode: 0o600 });
+    chmodSync(real, 0o600);
+    const link = join(dir, "settings.json");
+    symlinkSync(real, link);
+
+    writeJsonAtomic(link, { a: 1 });
+
+    expect(lstatSync(link).isSymbolicLink()).toBe(true);
+    expect(JSON.parse(readFileSync(real, "utf8"))).toEqual({ a: 1 });
+    expect(statSync(real).mode & 0o777).toBe(0o600);
+  });
+
+  it("preserves the mode of an existing regular file", () => {
+    const f = join(dir, "s.json");
+    writeFileSync(f, "{}");
+    chmodSync(f, 0o640);
+    writeJsonAtomic(f, { a: 1 });
+    expect(statSync(f).mode & 0o777).toBe(0o640);
+  });
+
+  it("creates new files private (0600)", () => {
+    const f = join(dir, "new", "s.json");
+    writeJsonAtomic(f, { a: 1 });
+    expect(statSync(f).mode & 0o777).toBe(0o600);
+  });
+});
+
+describe("readSettingsFile", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "leash-read-"));
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  it("strips a UTF-8 BOM", () => {
+    const f = join(dir, "s.json");
+    writeFileSync(f, `\uFEFF${JSON.stringify({ model: "x" })}`);
+    expect(readSettingsFile(f)).toEqual({ model: "x" });
+  });
+});
+
+describe("fullToolName", () => {
+  it("normalizes both the server and the tool name", () => {
+    expect(fullToolName("my.server", "do.thing v2")).toBe("mcp__my_server__do_thing_v2");
+    expect(fullToolName("ok-srv", "ok_tool-1")).toBe("mcp__ok-srv__ok_tool-1");
+  });
+});
+
+describe("ruleCovers with a known server containing __", () => {
+  it("uses the supplied server instead of splitting the name", () => {
+    const full = "mcp__a__b__tool";
+    expect(ruleCovers("mcp__a__b__*", full, "a__b")).toBe(true);
+    expect(ruleCovers("mcp__a__b", full, "a__b")).toBe(true);
+    expect(ruleCovers("mcp__a__*", full, "a__b")).toBe(false);
+  });
+});
+
+describe("mergeSettings guards", () => {
+  it("throws on non-array permissions values instead of corrupting them", () => {
+    const bad = { permissions: { ask: "mcp__x__y" } } as never;
+    expect(() => mergeSettings(bad, { deny: [], ask: ["mcp__s__send"] }, undefined)).toThrow(
+      /permissions\.ask/,
+    );
+    const badPerms = { permissions: ["x"] } as never;
+    expect(() => mergeSettings(badPerms, { deny: ["mcp__s__d"], ask: [] }, undefined)).toThrow(
+      /permissions/,
+    );
+  });
+  it("throws on a non-array hooks.PreToolUse", () => {
+    const bad = { hooks: { PreToolUse: {} } } as never;
+    expect(() => mergeSettings(bad, { deny: [], ask: [] }, HOOK)).toThrow(/PreToolUse/);
+  });
+});
+
+describe("allowOverrides", () => {
+  it("lists added deny/ask rules that shadow an existing allow rule", () => {
+    const existing = { deny: [], ask: [], allow: ["mcp__s__*", "mcp__t__x", "Bash(ls:*)"] };
+    const adds = { deny: ["mcp__t__x"], ask: ["mcp__s__send", "mcp__u__y"] };
+    expect(allowOverrides(adds, existing)).toEqual([
+      { tool: "mcp__t__x", rule: "mcp__t__x" },
+      { tool: "mcp__s__send", rule: "mcp__s__*" },
+    ]);
   });
 });
