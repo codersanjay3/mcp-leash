@@ -8,6 +8,8 @@ npx mcp-leash
 
 ![demo](docs/demo.gif)
 
+**[Try it in your browser →](https://codersanjay3.github.io/mcp-leash/)** Paste your MCP tool names and see what `lock` would deny or ask for. Nothing leaves your browser.
+
 [![CI](https://github.com/codersanjay3/mcp-leash/actions/workflows/ci.yml/badge.svg)](https://github.com/codersanjay3/mcp-leash/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/mcp-leash.svg)](https://www.npmjs.com/package/mcp-leash)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)

@@ -52,16 +52,20 @@ function render(): void {
   const multi = new Set(a.rows.map((r) => r.server)).size > 1;
   for (const r of a.rows) {
     const tr = el("tr");
-    const tool = el("td", "tool", r.name);
-    if (multi) tool.prepend(el("span", "srv", r.server));
+    const tool = el("td", "tool");
+    if (multi) tool.append(el("span", "srv", r.server));
+    // Let long snake_case names wrap at underscores instead of mid-word.
+    const nameEl = el("span", "name");
+    r.name.split(/(?<=_)/).forEach((part, i) => {
+      if (i > 0) nameEl.append(document.createElement("wbr"));
+      nameEl.append(part);
+    });
+    // On narrow screens the Risk column is hidden and this inline badge shows instead.
+    const inlineBadge = el("span", `badge badge-inline ${r.risk}`, r.risk.toUpperCase());
+    tool.append(inlineBadge, nameEl, el("span", "reason", r.reason));
     const risk = el("td");
     risk.append(el("span", `badge ${r.risk satisfies Risk}`, r.risk.toUpperCase()));
-    tr.append(
-      tool,
-      risk,
-      el("td", "reason", r.reason),
-      el("td", `act ${r.action}`, ACTION_LABEL[r.action]),
-    );
+    tr.append(tool, risk, el("td", `act ${r.action}`, ACTION_LABEL[r.action]));
     tbody.append(tr);
   }
   if (a.snippet) {

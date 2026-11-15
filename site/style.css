@@ -230,12 +230,35 @@ th {
   font-weight: 600;
 }
 td.tool {
-  overflow-wrap: anywhere;
-  min-width: 140px;
+  width: 100%;
 }
-td.reason {
+td.tool .name {
+  display: block;
+  font-family: var(--mono, ui-monospace, Menlo, monospace);
+  overflow-wrap: anywhere;
+}
+td.tool .reason {
+  display: block;
   color: var(--muted);
-  min-width: 160px;
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+td.act,
+th:last-child {
+  white-space: nowrap;
+}
+.badge-inline {
+  display: none;
+}
+@media (max-width: 520px) {
+  #table th:nth-child(2),
+  #table td:nth-child(2) {
+    display: none;
+  }
+  .badge-inline {
+    display: inline-block;
+    margin-bottom: 3px;
+  }
 }
 .srv {
   color: var(--muted);
