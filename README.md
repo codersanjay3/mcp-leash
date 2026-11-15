@@ -30,7 +30,7 @@ npx mcp-leash unlock   # remove exactly what lock added
 
 ## Example output
 
-This is real output from `mcp-leash scan --project test/fixtures/project-basic` in this repo. `fake` is a tiny MCP server used by the tests; `broken` points at a script that doesn't exist, to show that one bad server doesn't stop the scan.
+This is real output from `mcp-leash scan --trust-project --project test/fixtures/project-basic` in this repo. `fake` is a tiny MCP server used by the tests; `broken` points at a script that doesn't exist, to show that one bad server doesn't stop the scan.
 
 ```text
 mcp-leash scan  test/fixtures/project-basic
@@ -53,10 +53,10 @@ If your settings already cover a tool, the row ends with `[denied]`, `[ask]` or 
 ## How it works
 
 1. **Discover.** Reads your MCP servers from `~/.claude.json` (user scope), `~/.claude.json` under `projects[<path>]` (local scope) and `<project>/.mcp.json` (project scope). When the same name appears twice, local beats project beats user, like Claude Code.
-2. **Scan.** Connects to each server with the official MCP SDK (stdio, or streamable HTTP with SSE fallback), calls `tools/list` with a 10 second timeout, then kills what it spawned. Servers that need auth or fail are reported and skipped. `--offline` skips connecting and uses built-in presets only.
+2. **Scan.** Connects to each server with the official MCP SDK (stdio, or streamable HTTP with SSE fallback), calls `tools/list` with one 10 second deadline per server (connect and listing share it), then kills what it spawned, including grandchildren (stdio servers run in their own process group). **Project-scope (`.mcp.json`) stdio servers are not started** unless you pass `--trust-project` or confirm in an interactive terminal, because that file can come from a cloned repo; they are classified from presets only and shown with `(not started: project server — rerun with --trust-project)`. User and local scope servers are started as before. `lock` follows the same rule. Servers that need auth or fail are reported and skipped. `--offline` skips connecting and uses built-in presets only.
 3. **Classify.** Each tool becomes `critical` (irreversible or destructive), `write` (changes state or talks to the outside world), `read`, or `unknown`. Order: built-in preset for known servers (GitHub, filesystem, Slack, Postgres, SQLite, Supabase, Stripe, Notion, Linear, Puppeteer, Playwright, Docker, Kubernetes, AWS, shell, Desktop Commander), then MCP annotations (`destructiveHint`, `readOnlyHint`), then verbs in the tool name (`delete`, `create`, `get`, ...). The tool description is only a weak tiebreaker. Every row shows the reason.
 4. **Lock.** Writes full tool names such as `mcp__github__merge_pull_request` into `permissions.deny` / `permissions.ask` in `~/.claude/settings.json` (or `--scope project|local`). Levels: `balanced` (default) denies critical and asks for write; `strict` also asks for unknown. Existing rules are never removed or reordered, duplicates are skipped, and a tool that is already denied never gets an `ask`. What was added is recorded in `~/.mcp-leash/state.json`.
-5. **Hook.** Unless you pass `--no-hook`, `lock` copies a dependency-free `hook.mjs` to `~/.mcp-leash/hook.mjs` and registers it as a `PreToolUse` hook with matcher `mcp__.*`. It checks `~/.mcp-leash/rules.json`, answers `deny` or `ask` on a match, and appends a redacted line to `~/.mcp-leash/audit.jsonl`.
+5. **Hook.** Unless you pass `--no-hook`, `lock` copies a dependency-free `hook.mjs` to `~/.mcp-leash/hook.mjs` and registers it as a `PreToolUse` hook with matcher `mcp__.*`. It checks `~/.mcp-leash/rules.json`, answers `deny` or `ask` on a match, and appends a redacted line to `~/.mcp-leash/audit.jsonl` (created with mode 0600). A broken rule is skipped on its own (note on stderr) and never stops the audit line; a watchdog gives up after about 800 ms and fails open (or denies with `failClosed`).
 
 Other commands: `mcp-leash log [--today] [--server <name>] [--json] [-n 50]` shows the audit trail with calls per server and how many were denied or asked.
 
@@ -88,12 +88,13 @@ Other commands: `mcp-leash log [--today] [--server <name>] [--json] [-n 50]` sho
 | Field | Meaning |
 | --- | --- |
 | `tool` | Full tool name. `*` is a wildcard: `mcp__github__*`, `mcp__*__delete_*`. |
-| `when` | Optional. Maps a top-level argument name to a regular expression. Every entry must match. Non-string values are JSON-stringified first. A missing argument means no match. The special value `"!cwd"` matches a path argument that resolves outside the session's working directory (relative paths are resolved against it). |
+| `when` | Optional. Maps a top-level argument name to a regular expression. Every entry must match. Non-string values are JSON-stringified first. Only the first 2048 characters of an argument are tested. A missing argument means no match. The special value `"!cwd"` matches a path argument that resolves outside the session's working directory (relative paths are resolved against it; paths starting with `~` count as outside). |
 | `decision` | `deny` or `ask`. |
 | `reason` | Shown to Claude and you. Optional. |
+| `servers` | Optional list of normalized server names (`lock` writes it) so audit lines split `mcp__<server>__<tool>` correctly when a server name contains `__`. |
 | `failClosed` | If `true`, an internal hook error denies the call instead of letting it through. Default `false`. |
 
-The first matching rule wins. If nothing matches, the hook prints nothing and Claude Code's normal permission flow applies. Note that a hook `ask` is a prompt, not a block.
+Avoid patterns with nested quantifiers such as `(x+)+`: they can backtrack catastrophically. `lock` and `log` warn about them, and the hook's watchdog stops a runaway match. The first matching rule wins. If nothing matches, the hook prints nothing and Claude Code's normal permission flow applies. Note that a hook `ask` is a prompt, not a block.
 
 `lock` generates the default rules using your actual server names, so a GitHub server you named `gh` gets `mcp__gh__push_files` rules.
 
@@ -103,11 +104,19 @@ The first matching rule wins. If nothing matches, the hook prints nothing and Cl
 
 **Which clients does it support?** Claude Code only, for now. The permission rules and the hook format are Claude Code's. Scanning works on any `.mcp.json`-shaped config, but nothing is written for other clients.
 
-**Does `scan` run my MCP servers?** Yes, that's how it learns the tool list: it starts each configured server the same way Claude Code would, calls `tools/list`, and stops it. A project `.mcp.json` can contain any command, so don't scan a repo you don't trust. `--offline` never starts anything.
+**Does `scan` run my MCP servers?** Yes for your user and local scope servers: it starts each one the same way Claude Code would, calls `tools/list`, and stops it (with its child processes). Servers from a project `.mcp.json` are *not* started unless you pass `--trust-project` or answer yes at the interactive prompt, since that file can come from any repo. `--offline` never starts anything.
 
 **Does it change tool behaviour or proxy calls?** No. It only edits permission rules and registers a hook.
 
-**What about plugin-provided MCP servers?** Not discovered yet (their tools are named `mcp__plugin_<plugin>_<server>__<tool>`). You can write rules for them in `rules.json` by hand.
+**What about plugin-provided MCP servers?** Not covered yet (their tools are named `mcp__plugin_<plugin>_<server>__<tool>`). If any `enabledPlugins` are found in your settings, `scan` and `lock` print a warning saying so. You can write rules for them in `rules.json` by hand.
+
+## Limitations
+
+- Plugin-provided MCP servers (`mcp__plugin_*`) are not discovered, scanned or locked.
+- `--scope project` writes an absolute, machine-specific hook path into a file you may commit; `lock` warns about it.
+- A tool that already has a user `allow` rule gets your new `ask`/`deny` on top (deny and ask win over allow); `lock` lists these as `overrides your allow` in the diff.
+- Argument rules look at the first 2048 characters of an argument only.
+- Remote (http/sse) servers from a project `.mcp.json` are still contacted during `scan`, and `${VAR}` references in their URL or headers are expanded from your environment.
 
 **Where is my data?** Everything stays on your machine in `~/.mcp-leash/`. Values under keys matching `token|secret|password|key|auth` are redacted before anything is logged, and known token shapes are masked inside strings.
 
