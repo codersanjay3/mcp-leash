@@ -5,7 +5,7 @@ Thanks for helping. This is a small project; the bar is "tests pass and the chan
 ## Setup
 
 ```sh
-git clone https://github.com/sanjaysubramanian/mcp-leash
+git clone https://github.com/codersanjay3/mcp-leash
 cd mcp-leash
 npm install
 npm run lint && npm test && npm run build

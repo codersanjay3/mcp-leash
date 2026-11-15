@@ -8,7 +8,7 @@ npx mcp-leash
 
 ![demo](docs/demo.gif)
 
-[![CI](https://github.com/sanjaysubramanian/mcp-leash/actions/workflows/ci.yml/badge.svg)](https://github.com/sanjaysubramanian/mcp-leash/actions/workflows/ci.yml)
+[![CI](https://github.com/codersanjay3/mcp-leash/actions/workflows/ci.yml/badge.svg)](https://github.com/codersanjay3/mcp-leash/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/mcp-leash.svg)](https://www.npmjs.com/package/mcp-leash)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 

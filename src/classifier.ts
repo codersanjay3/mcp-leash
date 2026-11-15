@@ -26,6 +26,9 @@ const CRITICAL = new Set([
   "uninstall",
   "kill",
   "prune",
+  "clear",
+  "reset",
+  "overwrite",
 ]);
 const WRITE = new Set([
   "create",
@@ -81,6 +84,21 @@ const WRITE = new Set([
   "mutate",
   "call",
   "invoke",
+  "replace",
+  "import",
+  "duplicate",
+  "copy",
+  "connect",
+  "rotate",
+  "sync",
+  "generate",
+  "convert",
+  "attach",
+  "link",
+  "schedule",
+  "launch",
+  "open",
+  "reload",
 ]);
 const READ = new Set([
   "get",
@@ -154,8 +172,14 @@ export function classifyTool(tool: ToolInfo, preset?: Preset): Classification {
 
   const d = tool.description ?? "";
   if (d) {
+    // Descriptions are weak evidence ("...without deleting anything" is common),
+    // so they cap at "write" (ask) and never produce a deny on their own.
     if (DESC_CRITICAL.test(d)) {
-      return { risk: "critical", source: "description", reason: "description mentions deleting" };
+      return {
+        risk: "write",
+        source: "description",
+        reason: "description mentions deleting (review)",
+      };
     }
     if (DESC_WRITE.test(d)) {
       return {

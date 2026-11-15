@@ -26,12 +26,12 @@
   "author": "codersanjay3",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sanjaysubramanian/mcp-leash.git"
+    "url": "git+https://github.com/codersanjay3/mcp-leash.git"
   },
   "bugs": {
-    "url": "https://github.com/sanjaysubramanian/mcp-leash/issues"
+    "url": "https://github.com/codersanjay3/mcp-leash/issues"
   },
-  "homepage": "https://github.com/sanjaysubramanian/mcp-leash#readme",
+  "homepage": "https://github.com/codersanjay3/mcp-leash#readme",
   "scripts": {
     "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && tsup",
     "test": "vitest run",

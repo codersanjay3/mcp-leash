@@ -96,15 +96,42 @@ describe("classifyTool: annotations", () => {
 
 describe("classifyTool: description tiebreaker", () => {
   it("only used when the name gives no verb", () => {
+    // Descriptions are weak evidence: a mention of deleting asks, never denies.
     expect(
       classifyTool({ name: "frobnicate", description: "Permanently deletes the record" }).risk,
-    ).toBe("critical");
+    ).toBe("write");
     expect(classifyTool({ name: "frobnicate", description: "Sends an email to a user" }).risk).toBe(
       "write",
     );
     expect(
       classifyTool({ name: "frobnicate", description: "Returns the current weather" }).risk,
     ).toBe("read");
+  });
+
+  it("never escalates to critical from the description alone (real kicad false positive)", () => {
+    const c = classifyTool({
+      name: "suggest_placement",
+      description: "Suggest component placement without deleting or moving existing parts",
+    });
+    expect(c.risk).not.toBe("critical");
+  });
+
+  it("treats clear/reset/overwrite as critical and common mutators as write", () => {
+    expect(classifyTool({ name: "clear_board_outline" }).risk).toBe("critical");
+    expect(classifyTool({ name: "reset_database" }).risk).toBe("critical");
+    expect(classifyTool({ name: "overwrite_file" }).risk).toBe("critical");
+    for (const n of [
+      "replace_component",
+      "import_pcb",
+      "duplicate_component",
+      "copy_routing_pattern",
+      "connect_to_net",
+      "rotate_component",
+      "sync_schematic_to_board",
+      "generate_netlist",
+    ]) {
+      expect(classifyTool({ name: n }).risk, n).toBe("write");
+    }
   });
 
   it("does not override a name verb", () => {

@@ -30,7 +30,7 @@ a sandbox. Presets cover GitHub, filesystem, Slack, Postgres/SQLite/Supabase, St
 Linear, Puppeteer/Playwright, Docker, Kubernetes, AWS and shell servers, and PRs for more
 are very welcome.
 
-Repo: https://github.com/sanjaysubramanian/mcp-leash
+Repo: https://github.com/codersanjay3/mcp-leash
 
 Things I'd like feedback on: the critical/write split, the default rules, and which other
 clients are worth supporting.
