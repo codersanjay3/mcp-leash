@@ -1,4 +1,4 @@
-import { normalizeServerName } from "../discovery.js";
+import { normalizeServerName } from "../names.js";
 import type { ArgRule, ServerConfig } from "../types.js";
 import { filesystem } from "./filesystem.js";
 import { github } from "./github.js";

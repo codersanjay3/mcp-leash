@@ -1,11 +1,7 @@
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { normalizeServerName } from "./names.js";
 import type { DiscoveredServer, Scope, ServerConfig } from "./types.js";
-
-/** Claude Code replaces characters outside [A-Za-z0-9_-] in server names with `_`. */
-export function normalizeServerName(name: string): string {
-  return name.replace(/[^A-Za-z0-9_-]/g, "_");
-}
 
 export function transportOf(config: ServerConfig): "stdio" | "http" | "sse" | "ws" {
   if (config.type === "sse" || config.type === "ws" || config.type === "http") return config.type;
@@ -13,6 +9,8 @@ export function transportOf(config: ServerConfig): "stdio" | "http" | "sse" | "w
   if (config.command) return "stdio";
   return config.url ? "http" : "stdio";
 }
+
+export { normalizeServerName };
 
 export interface DiscoverOpts {
   home: string;
