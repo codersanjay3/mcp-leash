@@ -1,6 +1,7 @@
 import { normalizeServerName } from "../names.js";
 import type { ArgRule, ServerConfig } from "../types.js";
 import { filesystem } from "./filesystem.js";
+import { git } from "./git.js";
 import { github } from "./github.js";
 import {
   aws,
@@ -22,10 +23,11 @@ import type { Preset, PresetRisk } from "./types.js";
 
 export type { Preset } from "./types.js";
 
-// desktop-commander before shell so its more specific hints win.
+// desktop-commander before shell, and github before git, so the more specific hints win.
 export const PRESETS: Preset[] = [
   desktopCommander,
   github,
+  git,
   filesystem,
   slack,
   supabase,
