@@ -1,0 +1,6 @@
+{
+  "mcpServers": {
+    "fake": { "command": "node", "args": ["../fake-server.mjs"] },
+    "broken": { "command": "node", "args": ["./does-not-exist.js"] }
+  }
+}
