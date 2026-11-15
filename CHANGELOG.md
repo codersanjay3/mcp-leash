@@ -4,6 +4,13 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Preset for the Git MCP server (`mcp-server-git`, `mcp/git`): `git_reset` is critical;
+  `git_commit`, `git_add`, `git_checkout`, `git_create_branch` and `git_merge` are write;
+  status, diff, log, show, branch and remote are read.
+
 ## [0.1.0] - 2026-11-14
 
 ### Added

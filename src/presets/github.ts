@@ -4,7 +4,14 @@ export const github: Preset = {
   id: "github",
   label: "GitHub",
   keys: ["github", "github-mcp-server"],
-  hints: ["server-github", "github-mcp-server", "api.githubcopilot.com/mcp", "github/github-mcp"],
+  hints: [
+    "server-github",
+    "mcp-server-github",
+    "mcp/github",
+    "github-mcp-server",
+    "api.githubcopilot.com/mcp",
+    "github/github-mcp",
+  ],
   critical: [
     "merge_pull_request",
     "delete_file",
