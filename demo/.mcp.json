@@ -1,0 +1,6 @@
+{
+  "mcpServers": {
+    "github": { "command": "node", "args": ["stub-server.mjs", "github"] },
+    "filesystem": { "command": "node", "args": ["stub-server.mjs", "filesystem"] }
+  }
+}
