@@ -31,7 +31,7 @@ lock:    [--scope user|project|local] [--level strict|balanced] [--offline] [--y
 Project .mcp.json servers run repo-supplied commands, so scan/lock only start them with
 --trust-project (or after you confirm in an interactive terminal).
 unlock:  [--scope user|project|local] [--yes]
-log:     [--today] [--server <name>] [--json] [-n 50]
+log:     [--since <duration>] [--today] [--server <name>] [--json] [-n 50]
 
 Run without arguments to scan, e.g.:  npx mcp-leash
 `;
