@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>mcp-leash playground</title>
+    <meta
+      name="description"
+      content="See what mcp-leash would deny or ask for in your MCP servers. Runs entirely in your browser."
+    />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="top">
+      <h1>mcp-leash playground</h1>
+      <p class="lede">
+        Find the dangerous tools in your MCP servers and lock them down in Claude Code with one
+        command.
+      </p>
+      <div class="top-row">
+        <code class="cmd">npx mcp-leash</code>
+        <button type="button" id="copy-cmd" class="btn">Copy</button>
+        <a class="btn link" href="https://github.com/codersanjay3/mcp-leash">GitHub</a>
+      </div>
+      <p class="privacy">Nothing leaves your browser. The page runs the real CLI classifier and presets locally.</p>
+    </header>
+
+    <main>
+      <section class="panel" aria-labelledby="in-h">
+        <h2 id="in-h">1. Your MCP server</h2>
+        <p class="hint">Quick-pick an example, type tool names, or paste <code>npx mcp-leash scan --json</code> output.</p>
+        <div id="chips" class="chips" role="group" aria-label="Example tool lists from presets"></div>
+        <p id="chip-note" class="hint" aria-live="polite"></p>
+        <label for="server">Server name</label>
+        <input id="server" type="text" value="github" autocomplete="off" spellcheck="false" />
+        <label for="tools">Tool names (one per line) or scan JSON</label>
+        <textarea id="tools" rows="10" spellcheck="false" autocomplete="off"></textarea>
+        <fieldset class="level">
+          <legend>Level</legend>
+          <label><input type="radio" name="level" value="balanced" checked /> balanced</label>
+          <label><input type="radio" name="level" value="strict" /> strict</label>
+        </fieldset>
+        <p class="hint">balanced denies critical and asks for write. strict also asks for unknown.</p>
+      </section>
+
+      <section class="panel" aria-labelledby="out-h" aria-live="polite">
+        <h2 id="out-h">2. What lock would do</h2>
+        <p id="error" class="error" hidden></p>
+        <p id="summary" class="summary"></p>
+        <div class="table-wrap">
+          <table id="table">
+            <thead>
+              <tr><th>Tool</th><th>Risk</th><th>Reason</th><th>Action</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="snip-head">
+          <h3>permissions added to settings.json</h3>
+          <button type="button" id="copy-snip" class="btn" disabled>Copy</button>
+        </div>
+        <pre id="snippet" class="snippet"></pre>
+        <p class="hint">
+          <code>lock</code> also installs an argument-filter hook and an audit log, and never removes
+          your existing rules. See
+          <a href="https://github.com/codersanjay3/mcp-leash#how-it-works">how it works</a>. Undo with
+          <code>npx mcp-leash unlock</code>.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <span>MIT licensed</span> &middot;
+      <a href="https://github.com/codersanjay3/mcp-leash">github.com/codersanjay3/mcp-leash</a>
+    </footer>
+    <script src="main.js" defer></script>
+  </body>
+</html>
