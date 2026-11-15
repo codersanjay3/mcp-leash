@@ -60,7 +60,7 @@ If your settings already cover a tool, the row ends with `[denied]`, `[ask]` or 
 4. **Lock.** Writes full tool names such as `mcp__github__merge_pull_request` into `permissions.deny` / `permissions.ask` in `~/.claude/settings.json` (or `--scope project|local`). Levels: `balanced` (default) denies critical and asks for write; `strict` also asks for unknown. Existing rules are never removed or reordered, duplicates are skipped, and a tool that is already denied never gets an `ask`. What was added is recorded in `~/.mcp-leash/state.json`.
 5. **Hook.** Unless you pass `--no-hook`, `lock` copies a dependency-free `hook.mjs` to `~/.mcp-leash/hook.mjs` and registers it as a `PreToolUse` hook with matcher `mcp__.*`. It checks `~/.mcp-leash/rules.json`, answers `deny` or `ask` on a match, and appends a redacted line to `~/.mcp-leash/audit.jsonl` (created with mode 0600). A broken rule is skipped on its own (note on stderr) and never stops the audit line; a watchdog gives up after about 800 ms and fails open (or denies with `failClosed`).
 
-Other commands: `mcp-leash log [--today] [--server <name>] [--json] [-n 50]` shows the audit trail with calls per server and how many were denied or asked.
+Other commands: `mcp-leash log [--since <duration>] [--today] [--server <name>] [--json] [-n 50]` shows the audit trail with calls per server and how many were denied or asked. Use `--since 1h` or `--since 2d` for a recent interval (positive whole seconds, minutes, hours or days); it combines with `--today` and `--server`.
 
 ## rules.json reference
 

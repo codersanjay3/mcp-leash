@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The format follows
 ## [0.1.0] - Unreleased
 
 ### Added
+- `log --since <duration>`: filter the audit log by a recent interval, for example 1h or 2d.
 - `scan`: discovers MCP servers from user, local and project scope; connects over
   stdio, streamable HTTP (SSE fallback) with a 10s timeout; classifies every tool as
   critical / write / read / unknown with a reason; `--offline` and `--json`.

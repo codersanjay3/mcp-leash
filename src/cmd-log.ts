@@ -50,6 +50,7 @@ export async function logCommand(argv: string[], ctx: Ctx): Promise<number> {
     args: argv,
     options: {
       today: { type: "boolean", default: false },
+      since: { type: "string" },
       server: { type: "string" },
       json: { type: "boolean", default: false },
       n: { type: "string", short: "n", default: "50" },
@@ -62,7 +63,22 @@ export async function logCommand(argv: string[], ctx: Ctx): Promise<number> {
     console.error("-n must be a positive integer");
     return 2;
   }
+  let cutoff: number | undefined;
+  if (values.since !== undefined) {
+    const match = /^(\d+)([smhd])$/.exec(values.since);
+    const units: Record<string, number> = { s: 1_000, m: 60_000, h: 3_600_000, d: 86_400_000 };
+    const duration = match ? Number(match[1]) * units[match[2]] : 0;
+    if (!Number.isSafeInteger(duration) || duration <= 0) {
+      console.error("--since must be a positive duration, for example 1h or 2d (s, m, h, d)");
+      return 2;
+    }
+    cutoff = Date.now() - duration;
+  }
   let entries = readAudit(ctx.leashHome);
+  if (cutoff !== undefined) {
+    const since = cutoff;
+    entries = entries.filter((e) => Date.parse(e.ts) >= since);
+  }
   if (values.today) {
     const today = new Date().toDateString();
     entries = entries.filter((e) => new Date(e.ts).toDateString() === today);
