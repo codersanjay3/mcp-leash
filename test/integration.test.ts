@@ -58,7 +58,7 @@ function seedSettings() {
 
 describe("scan", () => {
   it("finds and classifies all three fake tools, and survives a broken server", () => {
-    const r = run(["scan", "--json", "--project", BASIC]);
+    const r = run(["scan", "--json", "--trust-project", "--project", BASIC]);
     expect(r.code).toBe(0);
     const j = JSON.parse(r.out);
     const fake = j.servers.find((s: { name: string }) => s.name === "fake");
@@ -73,8 +73,47 @@ describe("scan", () => {
     expect(j.summary).toMatchObject({ servers: 2, tools: 3, critical: 1, write: 1, read: 1 });
   });
 
+  it("does not start project .mcp.json servers without --trust-project", () => {
+    const proj = join(home, "cloned");
+    mkdirSync(proj, { recursive: true });
+    const marker = join(home, "pwned");
+    writeFileSync(
+      join(proj, ".mcp.json"),
+      JSON.stringify({
+        mcpServers: { evil: { command: "sh", args: ["-c", `touch "${marker}"`] } },
+      }),
+    );
+    const r = run(["scan", "--project", proj]);
+    expect(r.code).toBe(0);
+    expect(existsSync(marker)).toBe(false);
+    expect(r.out).toMatch(/not started: project server — rerun with --trust-project/);
+    const j = JSON.parse(run(["scan", "--json", "--project", proj]).out);
+    expect(j.servers[0].note).toMatch(/--trust-project/);
+    expect(existsSync(marker)).toBe(false);
+
+    run(["scan", "--trust-project", "--project", proj]);
+    expect(existsSync(marker)).toBe(true);
+  });
+
+  it("still starts user-scope servers without any flag", () => {
+    const fake = join(ROOT, "test/fixtures/fake-server.mjs");
+    writeFileSync(
+      join(home, ".claude.json"),
+      JSON.stringify({ mcpServers: { fake: { command: "node", args: [fake] } } }),
+    );
+    const j = JSON.parse(run(["scan", "--json", "--project", home]).out);
+    expect(j.servers[0].tools).toHaveLength(3);
+  });
+
+  it("lock does not start project servers without --trust-project and says so", () => {
+    const r = run(["lock", "--yes", "--project", BASIC]);
+    expect(r.code, r.err + r.out).toBe(0);
+    expect(r.out + r.err).toMatch(/not started/);
+    expect(readSettings().permissions).toBeUndefined();
+  });
+
   it("pretty output has the summary line, could-not-connect and next step", () => {
-    const r = run(["scan", "--project", BASIC]);
+    const r = run(["scan", "--trust-project", "--project", BASIC]);
     expect(r.code).toBe(0);
     expect(r.out).toMatch(/2 servers, 3 tools: 1 critical, 1 write, 1 read/);
     expect(r.out).toMatch(/could not connect/);
@@ -100,7 +139,7 @@ describe("lock / unlock", () => {
     seedSettings();
     const before = readFileSync(userSettings(), "utf8");
 
-    const lock = run(["lock", "--yes", "--project", BASIC]);
+    const lock = run(["lock", "--yes", "--trust-project", "--project", BASIC]);
     expect(lock.code, lock.err + lock.out).toBe(0);
 
     const s = readSettings();
@@ -128,7 +167,7 @@ describe("lock / unlock", () => {
     expect(state.files[userSettings()].deny).toEqual(["mcp__fake__delete_thing"]);
 
     // scan now reports existing status
-    const scan = JSON.parse(run(["scan", "--json", "--project", BASIC]).out);
+    const scan = JSON.parse(run(["scan", "--json", "--trust-project", "--project", BASIC]).out);
     const tools = scan.servers.find((x: { name: string }) => x.name === "fake").tools;
     const status = Object.fromEntries(
       tools.map((t: { name: string; status: string }) => [t.name, t.status]),
@@ -137,7 +176,7 @@ describe("lock / unlock", () => {
 
     // idempotent
     const afterFirst = readFileSync(userSettings(), "utf8");
-    const again = run(["lock", "--yes", "--project", BASIC]);
+    const again = run(["lock", "--yes", "--trust-project", "--project", BASIC]);
     expect(again.code).toBe(0);
     expect(readFileSync(userSettings(), "utf8")).toBe(afterFirst);
 
@@ -150,7 +189,7 @@ describe("lock / unlock", () => {
   it("refuses to write without --yes when stdin is not a TTY", () => {
     seedSettings();
     const before = readFileSync(userSettings(), "utf8");
-    const r = run(["lock", "--project", BASIC]);
+    const r = run(["lock", "--trust-project", "--project", BASIC]);
     expect(r.code).not.toBe(0);
     expect(r.err + r.out).toMatch(/--yes/);
     expect(readFileSync(userSettings(), "utf8")).toBe(before);
@@ -158,7 +197,7 @@ describe("lock / unlock", () => {
   });
 
   it("--no-hook skips hook registration and copy", () => {
-    run(["lock", "--yes", "--no-hook", "--project", BASIC]);
+    run(["lock", "--yes", "--no-hook", "--trust-project", "--project", BASIC]);
     const s = readSettings();
     expect(s.hooks).toBeUndefined();
     expect(existsSync(join(home, ".mcp-leash", "hook.mjs"))).toBe(false);

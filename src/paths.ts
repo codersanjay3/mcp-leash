@@ -4,6 +4,8 @@ import { join } from "node:path";
 export interface Ctx {
   home: string;
   leashHome: string;
+  /** Override the hook.mjs to install (tests and embedding). */
+  hookSource?: string;
 }
 
 /** Resolve directories. Honors HOME (via os.homedir) and MCP_LEASH_HOME. */

@@ -24,8 +24,12 @@ Common options:
   -h, --help              Show help
   -v, --version           Show version
 
-scan:    [--offline] [--json]
+scan:    [--offline] [--json] [--trust-project]
 lock:    [--scope user|project|local] [--level strict|balanced] [--offline] [--yes] [--no-hook]
+         [--trust-project]
+
+Project .mcp.json servers run repo-supplied commands, so scan/lock only start them with
+--trust-project (or after you confirm in an interactive terminal).
 unlock:  [--scope user|project|local] [--yes]
 log:     [--today] [--server <name>] [--json] [-n 50]
 

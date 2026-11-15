@@ -22,7 +22,7 @@ export interface DiscoverOpts {
 function readJson(path: string, warnings: string[]): Record<string, unknown> | undefined {
   if (!existsSync(path)) return undefined;
   try {
-    const v = JSON.parse(readFileSync(path, "utf8"));
+    const v = JSON.parse(readFileSync(path, "utf8").replace(/^\uFEFF/, ""));
     return v && typeof v === "object" && !Array.isArray(v) ? v : undefined;
   } catch (e) {
     warnings.push(`${path}: invalid JSON (${(e as Error).message})`);

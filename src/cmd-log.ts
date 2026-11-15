@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { parseArgs } from "node:util";
 import pc from "picocolors";
 import type { Ctx } from "./paths.js";
+import { lintRules } from "./rules-lint.js";
 
 export interface AuditEntry {
   ts: string;
@@ -55,6 +56,7 @@ export async function logCommand(argv: string[], ctx: Ctx): Promise<number> {
     },
     strict: true,
   });
+  for (const w of lintRules(ctx.leashHome)) console.error(pc.yellow(`⚠ ${w}`));
   const n = Number.parseInt(values.n as string, 10);
   if (!Number.isFinite(n) || n < 1) {
     console.error("-n must be a positive integer");

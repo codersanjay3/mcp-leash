@@ -11,12 +11,17 @@ export async function scanCommand(argv: string[], ctx: Ctx): Promise<number> {
       project: { type: "string" },
       offline: { type: "boolean", default: false },
       json: { type: "boolean", default: false },
+      "trust-project": { type: "boolean", default: false },
     },
     strict: true,
   });
   const project = resolve(values.project ?? process.cwd());
   const offline = values.offline === true;
-  const result = await runScan(ctx, { project, offline });
+  const result = await runScan(ctx, {
+    project,
+    offline,
+    trustProject: values["trust-project"] === true,
+  });
   const rules = existingRules(ctx, project);
   if (values.json) console.log(JSON.stringify(toJson(result, rules), null, 2));
   else console.log(renderScan(result, rules, offline));

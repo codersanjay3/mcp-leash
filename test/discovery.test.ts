@@ -19,6 +19,18 @@ afterEach(() => rmSync(root, { recursive: true, force: true }));
 
 const writeJson = (p: string, v: unknown) => writeFileSync(p, JSON.stringify(v));
 
+describe("discoverServers BOM", () => {
+  it("parses a config that starts with a UTF-8 BOM", () => {
+    writeFileSync(
+      join(home, ".claude.json"),
+      `\uFEFF${JSON.stringify({ mcpServers: { a: { command: "x" } } })}`,
+    );
+    const { servers, warnings } = discoverServers({ home, project });
+    expect(warnings).toEqual([]);
+    expect(servers.map((s) => s.name)).toEqual(["a"]);
+  });
+});
+
 describe("discoverServers", () => {
   it("reads user scope from ~/.claude.json mcpServers", () => {
     writeJson(join(home, ".claude.json"), {

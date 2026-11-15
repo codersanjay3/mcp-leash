@@ -54,7 +54,7 @@ export function summaryLine(s: Summary): string {
 }
 
 export function statusOf(tool: ScannedTool, rules: RuleSets) {
-  return toolStatus(tool.fullName, rules);
+  return toolStatus(tool.fullName, rules, tool.server);
 }
 
 export function statusTag(st: ReturnType<typeof toolStatus>): string {
@@ -76,12 +76,13 @@ export function toJson(r: ScanResult, rules: RuleSets) {
       preset: s.preset ?? null,
       source: s.source,
       ...(s.error ? { error: s.error } : {}),
+      ...(s.note ? { note: s.note } : {}),
       tools: s.tools.map((t) => ({
         name: t.name,
         fullName: t.fullName,
         risk: t.risk,
         reason: t.reason,
-        status: toolStatus(t.fullName, rules) ?? null,
+        status: toolStatus(t.fullName, rules, t.server) ?? null,
       })),
     })),
     summary: summarize(r.servers),
@@ -109,12 +110,15 @@ export function renderScan(r: ScanResult, rules: RuleSets, offline: boolean): st
       out.push(`  ${pc.yellow(`⚠ could not connect (${s.error})`)}`);
       continue;
     }
+    if (s.note) out.push(`  ${pc.yellow(s.note)}`);
     if (s.tools.length === 0) {
-      out.push(
-        offline && !s.preset
-          ? pc.dim("  no preset for this server; run without --offline to scan it")
-          : pc.dim("  no tools"),
-      );
+      if (!s.note) {
+        out.push(
+          offline && !s.preset
+            ? pc.dim("  no preset for this server; run without --offline to scan it")
+            : pc.dim("  no tools"),
+        );
+      }
       continue;
     }
     const tools = [...s.tools].sort(
@@ -122,7 +126,7 @@ export function renderScan(r: ScanResult, rules: RuleSets, offline: boolean): st
     );
     const width = Math.max(...tools.map((t) => t.name.length));
     for (const t of tools) {
-      const tag = statusTag(toolStatus(t.fullName, rules));
+      const tag = statusTag(toolStatus(t.fullName, rules, t.server));
       out.push(
         `  ${badge(t.risk)} ${t.name.padEnd(width)}  ${pc.dim(t.reason)}${tag ? `  ${tag}` : ""}`,
       );

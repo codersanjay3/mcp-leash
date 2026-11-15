@@ -1,7 +1,7 @@
 import { createInterface } from "node:readline";
 import { discoverServers } from "./discovery.js";
 import type { Ctx } from "./paths.js";
-import { type ScannedServer, scanAll } from "./scanner.js";
+import { describeTarget, needsTrust, type ScannedServer, scanAll } from "./scanner.js";
 import {
   combineRules,
   type RuleSets,
@@ -21,15 +21,62 @@ export interface ScanResult {
   warnings: string[];
 }
 
-export async function runScan(
-  ctx: Ctx,
-  opts: { project: string; offline: boolean },
-): Promise<ScanResult> {
+export interface ScanOpts {
+  project: string;
+  offline: boolean;
+  /** Start project-scope (.mcp.json) stdio servers without asking. */
+  trustProject?: boolean;
+  /** Override TTY detection (tests). Defaults to stdin and stdout both being a TTY. */
+  interactive?: boolean;
+  confirmFn?: (question: string) => Promise<boolean>;
+}
+
+/** Names of plugins enabled in any settings file that applies to this project. */
+export function enabledPlugins(ctx: Ctx, project: string): string[] {
+  const names = new Set<string>();
+  for (const scope of SCOPES) {
+    try {
+      const v = readSettingsFile(settingsPathFor(scope, ctx.home, project)).enabledPlugins;
+      if (!v || typeof v !== "object" || Array.isArray(v)) continue;
+      for (const [k, on] of Object.entries(v)) if (on === true) names.add(k);
+    } catch {
+      /* unreadable settings are skipped */
+    }
+  }
+  return [...names];
+}
+
+export async function runScan(ctx: Ctx, opts: ScanOpts): Promise<ScanResult> {
   const { servers: discovered, warnings } = discoverServers({
     home: ctx.home,
     project: opts.project,
   });
-  const servers = await scanAll(discovered, { offline: opts.offline, cwd: opts.project });
+
+  let trustProject = opts.trustProject === true;
+  if (!trustProject && !opts.offline) {
+    const untrusted = discovered.filter(needsTrust);
+    const interactive = opts.interactive ?? Boolean(process.stdin.isTTY && process.stdout.isTTY);
+    if (untrusted.length > 0 && interactive) {
+      const list = untrusted.map((s) => `  ${s.name}: ${describeTarget(s.config)}`).join("\n");
+      const ask = opts.confirmFn ?? ((q: string) => confirm(q, process.stderr));
+      trustProject = await ask(
+        `The project .mcp.json defines servers that would run these commands on this machine:\n${list}\nStart them?`,
+      );
+    }
+  }
+
+  const servers = await scanAll(discovered, {
+    offline: opts.offline,
+    cwd: opts.project,
+    trustProject,
+  });
+
+  const plugins = enabledPlugins(ctx, opts.project);
+  if (plugins.length > 0) {
+    warnings.push(
+      `${plugins.length} enabled plugin${plugins.length === 1 ? "" : "s"} (${plugins.join(", ")}) may provide MCP servers (mcp__plugin_*) that mcp-leash does not cover yet: their tools are not scanned or locked`,
+    );
+  }
   return { project: opts.project, discovered, servers, warnings };
 }
 
@@ -51,8 +98,11 @@ export function isScope(v: string): v is Scope {
   return (SCOPES as string[]).includes(v);
 }
 
-export async function confirm(question: string): Promise<boolean> {
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
+export async function confirm(
+  question: string,
+  output: NodeJS.WritableStream = process.stdout,
+): Promise<boolean> {
+  const rl = createInterface({ input: process.stdin, output });
   return new Promise((res) => {
     rl.question(`${question} [y/N] `, (a) => {
       rl.close();
