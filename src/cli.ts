@@ -71,10 +71,14 @@ async function main(): Promise<number> {
   }
 }
 
-main().then(
-  (code) => process.exit(code),
-  (e) => {
-    console.error(`mcp-leash: ${e instanceof Error ? e.message : String(e)}`);
-    process.exit(1);
-  },
-);
+// process.exit() right after writing drops queued output when stdout is an async pipe
+// (macOS), truncating `scan --json`. Flush both streams first, then exit.
+function exitAfterFlush(code: number): void {
+  process.exitCode = code;
+  process.stdout.write("", () => process.stderr.write("", () => process.exit(code)));
+}
+
+main().then(exitAfterFlush, (e) => {
+  console.error(`mcp-leash: ${e instanceof Error ? e.message : String(e)}`);
+  exitAfterFlush(1);
+});

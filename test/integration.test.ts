@@ -349,3 +349,45 @@ describe("built hook.mjs", () => {
     expect(j.summary.github.calls).toBe(1);
   });
 });
+
+describe("large piped output", () => {
+  it("does not truncate --json when stdout is a slow pipe (macOS async pipes)", async () => {
+    const { spawn } = await import("node:child_process");
+    const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs");
+    const dir = mkdtempSync(join(tmpdir(), "leash-big-"));
+    const home = mkdtempSync(join(tmpdir(), "leash-big-home-"));
+    try {
+      const servers: Record<string, unknown> = {};
+      for (let i = 0; i < 400; i++)
+        servers[`github${i}`] = { command: "github-mcp-server", args: [] };
+      writeFileSync(join(dir, ".mcp.json"), JSON.stringify({ mcpServers: servers }));
+      const child = spawn(
+        process.execPath,
+        [CLI, "scan", "--offline", "--json", "--project", dir],
+        {
+          env: {
+            ...process.env,
+            HOME: home,
+            MCP_LEASH_HOME: join(home, ".mcp-leash"),
+            NO_COLOR: "1",
+          },
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      );
+      // Read slowly so the pipe buffer fills and node has to queue writes.
+      const chunks: Buffer[] = [];
+      child.stdout.on("data", (c: Buffer) => {
+        chunks.push(c);
+        child.stdout.pause();
+        setTimeout(() => child.stdout.resume(), 2);
+      });
+      await new Promise((r) => child.stdout.on("end", r));
+      const out = Buffer.concat(chunks).toString("utf8");
+      expect(out.length).toBeGreaterThan(100_000);
+      expect(() => JSON.parse(out)).not.toThrow();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+      rmSync(home, { recursive: true, force: true });
+    }
+  }, 30_000);
+});
