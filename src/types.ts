@@ -47,5 +47,7 @@ export interface ArgRule {
 export interface RulesFile {
   version?: number;
   failClosed?: boolean;
+  /** Optional normalized server names, used to split `mcp__<server>__<tool>` unambiguously. */
+  servers?: string[];
   rules?: ArgRule[];
 }

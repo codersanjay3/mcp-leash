@@ -1,10 +1,11 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   argsPreview,
   evaluateRules,
+  findNestedQuantifiers,
   globToRegExp,
   parseToolName,
   redact,
@@ -244,5 +245,103 @@ describe("runHook", () => {
       leashHome: join(dir, "rules.json", "nope"),
     });
     expect(r.code).toBe(0);
+  });
+});
+
+describe("per-rule isolation and independent audit", () => {
+  it("an invalid regex skips only that rule: later rules still apply and the audit is written", () => {
+    rules({
+      rules: [
+        { tool: "*", when: { branch: "(" }, decision: "ask" },
+        { tool: "mcp__github__push_files", when: { branch: "^main$" }, decision: "deny" },
+      ],
+    });
+    const r = call(pushMain);
+    expect(JSON.parse(r.stdout).hookSpecificOutput.permissionDecision).toBe("deny");
+    expect(r.stderr).toMatch(/skipping rule/);
+    expect(audit()).toHaveLength(1);
+    expect(audit()[0]).toMatchObject({ decision: "deny" });
+  });
+
+  it("writes the audit line even when rules.json is unreadable (fail-open)", () => {
+    writeFileSync(join(dir, "rules.json"), "{not json");
+    const r = call(pushMain);
+    expect(r.code).toBe(0);
+    expect(r.stdout).toBe("");
+    expect(r.stderr).toMatch(/rules/);
+    expect(audit()).toHaveLength(1);
+  });
+
+  it("a malformed rule entry does not stop evaluation", () => {
+    rules({ rules: [null, { tool: "mcp__github__*", decision: "ask" }] });
+    const r = call(pushMain);
+    expect(JSON.parse(r.stdout).hookSpecificOutput.permissionDecision).toBe("ask");
+  });
+});
+
+describe("ReDoS defenses", () => {
+  it("only tests the first 2048 chars of an argument", () => {
+    const rr = [{ tool: "*", when: { text: "b$" }, decision: "deny" as const }];
+    const long = `${"a".repeat(3000)}b`;
+    expect(evaluateRules({ tool_name: "t", tool_input: { text: long } }, rr)).toBeUndefined();
+    expect(evaluateRules({ tool_name: "t", tool_input: { text: "ab" } }, rr)).toBeDefined();
+  });
+
+  it("flags nested quantifiers like (x+)+ but not ordinary patterns", () => {
+    expect(findNestedQuantifiers("^(a+)+$")).toBe(true);
+    expect(findNestedQuantifiers("(a*)*")).toBe(true);
+    expect(findNestedQuantifiers("^(\\w+\\s?)*$")).toBe(true);
+    expect(findNestedQuantifiers("(.*)+x")).toBe(true);
+    expect(findNestedQuantifiers("^(main|master)$")).toBe(false);
+    expect(findNestedQuantifiers("^feature/.+$")).toBe(false);
+    expect(findNestedQuantifiers("(ab)+")).toBe(false);
+  });
+});
+
+describe("more redaction", () => {
+  it("redacts scheme://user:pass@ credentials and Bearer tokens anywhere", () => {
+    const out = JSON.stringify(
+      redact({
+        url: "postgres://admin:hunter2@db.example.com:5432/app",
+        nested: [{ cmd: "curl -H 'Authorization: Bearer abc.def-123_xyz' https://x" }],
+        plain: "https://example.com/path",
+      }),
+    );
+    expect(out).not.toContain("hunter2");
+    expect(out).not.toContain("abc.def-123_xyz");
+    expect(out).toContain("db.example.com");
+    expect(out).toContain("https://example.com/path");
+    expect(redact("Bearer sometoken123")).not.toContain("sometoken123");
+  });
+
+  it("creates audit.jsonl with mode 0600", () => {
+    call(pushMain);
+    expect(statSync(join(dir, "audit.jsonl")).mode & 0o777).toBe(0o600);
+  });
+});
+
+describe("misc hook parsing", () => {
+  it("!cwd treats ~ paths as outside cwd", () => {
+    const rr = [{ tool: "*", when: { path: "!cwd" }, decision: "ask" as const }];
+    const ev = (p: string) =>
+      evaluateRules({ tool_name: "t", cwd: "/work/proj", tool_input: { path: p } }, rr);
+    expect(ev("~/.ssh/id_rsa")).toBeDefined();
+    expect(ev("~")).toBeDefined();
+    expect(ev("src/~notes.txt")).toBeUndefined();
+  });
+
+  it("parseToolName prefers a known server list when names contain __", () => {
+    expect(parseToolName("mcp__a__b__tool", ["a__b", "a"])).toEqual({
+      server: "a__b",
+      tool: "tool",
+    });
+    expect(parseToolName("mcp__a__tool", ["a__b", "a"])).toEqual({ server: "a", tool: "tool" });
+    expect(parseToolName("mcp__zzz__tool", ["a"])).toEqual({ server: "zzz", tool: "tool" });
+  });
+
+  it("uses the optional servers list from rules.json in the audit line", () => {
+    rules({ servers: ["my__srv"], rules: [] });
+    call({ ...pushMain, tool_name: "mcp__my__srv__do_it" });
+    expect(audit()[0]).toMatchObject({ server: "my__srv", tool: "do_it" });
   });
 });

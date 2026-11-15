@@ -256,6 +256,49 @@ describe("built hook.mjs", () => {
     expect(src).not.toMatch(/modelcontextprotocol/);
   });
 
+  it("watchdog: a catastrophic regex fails open within ~1s (no output, exit 0)", () => {
+    const leash = join(home, ".mcp-leash");
+    mkdirSync(leash, { recursive: true });
+    writeFileSync(
+      join(leash, "rules.json"),
+      JSON.stringify({
+        rules: [{ tool: "*", when: { text: "^(a+)+$" }, decision: "deny" }],
+      }),
+    );
+    const evil = input({ tool_input: { text: `${"a".repeat(1900)}!` } });
+    const t0 = Date.now();
+    const r = spawnSync("node", [HOOK], {
+      input: evil,
+      encoding: "utf8",
+      timeout: 8000,
+      env: { ...process.env, HOME: home, MCP_LEASH_HOME: "" } as never,
+    });
+    expect(r.status).toBe(0);
+    expect(r.stdout).toBe("");
+    expect(Date.now() - t0).toBeLessThan(4000);
+    expect(readFileSync(join(leash, "audit.jsonl"), "utf8")).toMatch(/timeout/);
+  });
+
+  it("watchdog with failClosed: a hung rule evaluation denies", () => {
+    const leash = join(home, ".mcp-leash");
+    mkdirSync(leash, { recursive: true });
+    writeFileSync(
+      join(leash, "rules.json"),
+      JSON.stringify({
+        failClosed: true,
+        rules: [{ tool: "*", when: { text: "^(a+)+$" }, decision: "ask" }],
+      }),
+    );
+    const r = spawnSync("node", [HOOK], {
+      input: input({ tool_input: { text: `${"a".repeat(1900)}!` } }),
+      encoding: "utf8",
+      timeout: 8000,
+      env: { ...process.env, HOME: home, MCP_LEASH_HOME: "" } as never,
+    });
+    expect(r.status).toBe(0);
+    expect(JSON.parse(r.stdout).hookSpecificOutput.permissionDecision).toBe("deny");
+  });
+
   it("log command reads the audit trail", () => {
     const leash = join(home, ".mcp-leash");
     mkdirSync(leash, { recursive: true });
