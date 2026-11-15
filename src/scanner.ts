@@ -40,9 +40,12 @@ export interface ScannedServer {
 export const CONNECT_TIMEOUT_MS = 10_000;
 export const NOT_STARTED_NOTE = "(not started: project server — rerun with --trust-project)";
 
-/** Project-scope (.mcp.json) stdio servers execute commands from the repo: they need trust. */
+/**
+ * Project-scope (.mcp.json) servers come from the repo, so they need trust: stdio ones run
+ * the repo's commands, and remote ones would receive ${VAR}-expanded secrets in URL/headers.
+ */
 export function needsTrust(server: DiscoveredServer): boolean {
-  return server.scope === "project" && transportOf(server.config) === "stdio";
+  return server.scope === "project";
 }
 
 /** Expand ${VAR} and ${VAR:-default} like Claude Code does in MCP configs. */

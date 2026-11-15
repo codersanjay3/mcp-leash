@@ -15,9 +15,9 @@ within a few days.
   their tool lists. Servers from a project `.mcp.json` (which can come from an untrusted
   repository) are not started unless you pass `--trust-project` or confirm in an interactive
   terminal; otherwise they are classified from presets only. Started servers run in their own
-  process group and the whole group is killed afterwards. Remote project servers are still
-  contacted (with `${VAR}` expansion in URL and headers), so avoid scanning untrusted repos
-  with secrets in your environment. `--offline` never starts or contacts anything.
+  process group and the whole group is killed afterwards. Remote (http/sse) project servers
+  are not contacted without trust either, because `${VAR}` references in their URL and
+  headers would expand secrets from your environment. `--offline` never starts or contacts anything.
 - The hook is fail-open by default so it can never lock you out of your own tools by
   accident. Set `"failClosed": true` in `~/.mcp-leash/rules.json` to change that.
 - The audit log (`~/.mcp-leash/audit.jsonl`) stores a truncated, redacted preview of tool

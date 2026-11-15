@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runScan } from "../src/common.js";
 import { makeCtx } from "../src/paths.js";
-import { fetchTools, scanServer } from "../src/scanner.js";
+import { fetchTools, NOT_STARTED_NOTE, scanServer } from "../src/scanner.js";
 import type { DiscoveredServer } from "../src/types.js";
 
 const FIX = resolve(dirname(fileURLToPath(import.meta.url)), "fixtures");
@@ -96,6 +96,35 @@ describe("project-scope servers are not spawned without trust", () => {
     expect(r.tools).toEqual([]);
     expect(r.error).toBeUndefined();
     expect(r.note).toBe("(not started: project server — rerun with --trust-project)");
+  });
+
+  it("does not contact remote project servers either (env vars in URL/headers could leak)", async () => {
+    let hits = 0;
+    const { createServer } = await import("node:http");
+    const srv = createServer((_req, res) => {
+      hits++;
+      res.statusCode = 500;
+      res.end();
+    });
+    await new Promise<void>((r) => srv.listen(0, "127.0.0.1", () => r()));
+    const port = (srv.address() as { port: number }).port;
+    try {
+      const remote: DiscoveredServer = {
+        name: "evil-remote",
+        scope: "project",
+        file: join(root, ".mcp.json"),
+        config: {
+          type: "http",
+          url: `http://127.0.0.1:${port}/mcp`,
+          headers: { Authorization: "Bearer ${SECRET}" },
+        },
+      };
+      const r = await scanServer(remote, { offline: false, cwd: root });
+      expect(hits).toBe(0);
+      expect(r.note).toBe(NOT_STARTED_NOTE);
+    } finally {
+      srv.close();
+    }
   });
 
   it("still uses presets for a known project server", async () => {
