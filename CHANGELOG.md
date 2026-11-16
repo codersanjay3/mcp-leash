@@ -11,6 +11,9 @@ All notable changes to this project are documented here. The format follows
 - Preset for the Git MCP server (`mcp-server-git`, `mcp/git`): `git_reset` is critical;
   `git_commit`, `git_add`, `git_checkout`, `git_create_branch` and `git_merge` are write;
   status, diff, log, show, branch and remote are read.
+- Presets for Redis (`redis-mcp-server`, `mcp/redis`) and MongoDB (`mongodb-mcp-server`):
+  `flushall`/`flushdb`/`drop_*` (MongoDB: `delete-many`) are critical; `set`, `hset`,
+  `insert-*` and `update-*` are write; `get`, `find` and `list-*` are read.
 
 ## [0.1.0] - 2026-11-14
 

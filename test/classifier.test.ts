@@ -185,4 +185,34 @@ describe("classifyTool: presets", () => {
   it("shell execute_command is critical", () => {
     expect(classifyTool({ name: "execute_command" }, preset("shell")).risk).toBe("critical");
   });
+
+  it("redis flush and drop are critical, writes are write, reads are read", () => {
+    const redis = preset("redis");
+    for (const t of ["flushall", "flushdb", "drop_cache"]) {
+      expect(classifyTool({ name: t }, redis).risk, t).toBe("critical");
+    }
+    for (const t of ["set", "hset", "delete", "lpush", "expire"]) {
+      expect(classifyTool({ name: t }, redis).risk, t).toBe("write");
+    }
+    for (const t of ["get", "hgetall", "scan_keys", "dbsize"]) {
+      const c = classifyTool({ name: t }, redis);
+      expect(c.risk, t).toBe("read");
+      expect(c.source, t).toBe("preset");
+    }
+  });
+
+  it("mongodb drop and delete-many are critical, inserts/updates are write, find/list are read", () => {
+    const mongo = preset("mongodb");
+    for (const t of ["drop-collection", "drop-database", "delete-many"]) {
+      expect(classifyTool({ name: t }, mongo).risk, t).toBe("critical");
+    }
+    for (const t of ["insert-many", "update-many", "create-collection", "rename-collection"]) {
+      expect(classifyTool({ name: t }, mongo).risk, t).toBe("write");
+    }
+    for (const t of ["find", "count", "list-databases", "collection-schema"]) {
+      const c = classifyTool({ name: t }, mongo);
+      expect(c.risk, t).toBe("read");
+      expect(c.source, t).toBe("preset");
+    }
+  });
 });

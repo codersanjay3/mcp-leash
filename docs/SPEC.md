@@ -101,6 +101,8 @@
   - **filesystem**
   - **slack**
   - **postgres/sqlite/supabase:** `execute_sql`/`query` → write; drop → critical
+  - **redis:** `flushall`/`flushdb`/`drop_*` → critical; `set`/`hset`/`delete`/`expire` → write; `get`/`hgetall`/`scan_keys`/`dbsize` → read
+  - **mongodb:** `drop-*`/`delete-many` → critical; `insert-*`/`update-*`/`aggregate` → write; `find`/`count`/`list-*` → read
   - **stripe**
   - **notion**
   - **linear**
