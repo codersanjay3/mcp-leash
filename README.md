@@ -140,6 +140,10 @@ npm run lint && npm test && npm run build
 
 Tests never touch your real home directory: they use temp dirs via `HOME` and `MCP_LEASH_HOME`. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Sibling project
+
+[spend-leash](https://github.com/codersanjay3/spend-leash): per-task budgets and a loop breaker for Claude Code. mcp-leash limits what your agent can do; spend-leash limits how much it spends doing it.
+
 ## License
 
 MIT
