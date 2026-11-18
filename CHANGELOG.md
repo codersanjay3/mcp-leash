@@ -14,6 +14,10 @@ All notable changes to this project are documented here. The format follows
 - Presets for Redis (`redis-mcp-server`, `mcp/redis`) and MongoDB (`mongodb-mcp-server`):
   `flushall`/`flushdb`/`drop_*` (MongoDB: `delete-many`) are critical; `set`, `hset`,
   `insert-*` and `update-*` are write; `get`, `find` and `list-*` are read.
+- **Plugin server discovery**: `scan` and `lock` now discover MCP servers from installed
+  plugin manifests (`~/.claude/plugins/<plugin>/manifest.json`) when the plugin is enabled
+  in settings (`enabledPlugins`). Plugin servers are named `plugin_<plugin>_<server>` and
+  their tools follow the `mcp__plugin_<plugin>_<server>__<tool>` convention.
 
 ## [0.1.0] - 2026-11-14
 
@@ -46,6 +50,5 @@ All notable changes to this project are documented here. The format follows
   before touching settings, re-reads settings after the prompt, and rolls state back on failure.
 - Hook: per-rule error isolation, audit always attempted, 2048-char regex input cap, 800ms
   watchdog, broader redaction, audit log mode 0600.
-- `scan`/`lock` warn about enabled plugins (their MCP servers are not covered yet).
 
 [0.1.0]: https://github.com/codersanjay3/mcp-leash/releases/tag/v0.1.0

@@ -51,6 +51,8 @@ export function settingsPathFor(scope: Scope, home: string, project: string): st
       return join(resolve(project), ".claude", "settings.json");
     case "local":
       return join(resolve(project), ".claude", "settings.local.json");
+    case "plugin":
+      throw new Error("plugin scope does not have a settings file");
   }
 }
 

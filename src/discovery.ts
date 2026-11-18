@@ -15,6 +15,8 @@ export { normalizeServerName };
 export interface DiscoverOpts {
   home: string;
   project: string;
+  /** Names of enabled plugins (e.g. ["my-plugin", "other-plugin"]). */
+  enabledPlugins?: string[];
 }
 
 function readJson(path: string, warnings: string[]): Record<string, unknown> | undefined {
@@ -49,10 +51,27 @@ function projectKeys(project: string): string[] {
   return [...keys];
 }
 
+/** Read a plugin manifest from <home>/.claude/plugins/<plugin>/manifest.json. */
+function readPluginManifest(
+  home: string,
+  plugin: string,
+  warnings: string[],
+): { servers?: Record<string, ServerConfig> } | undefined {
+  const manifestPath = join(home, ".claude", "plugins", plugin, "manifest.json");
+  const manifest = readJson(manifestPath, warnings);
+  if (!manifest) return undefined;
+  const servers = manifest.servers;
+  if (!servers || typeof servers !== "object" || Array.isArray(servers)) {
+    warnings.push(`${manifestPath}: missing or invalid "servers" object`);
+    return undefined;
+  }
+  return { servers: servers as Record<string, ServerConfig> };
+}
+
 /**
  * Find MCP servers from user (~/.claude.json), local
- * (~/.claude.json projects[path]) and project (.mcp.json) scopes.
- * Same-name precedence matches Claude Code: local > project > user.
+ * (~/.claude.json projects[path]), project (.mcp.json), and plugin scopes.
+ * Same-name precedence matches Claude Code: local > project > user > plugin.
  */
 export function discoverServers(opts: DiscoverOpts): {
   servers: DiscoveredServer[];
@@ -71,7 +90,24 @@ export function discoverServers(opts: DiscoverOpts): {
   );
   const proj = pick(pj?.mcpServers, "project", mcpJson);
 
+  // Discover plugin servers
+  const plugin: DiscoveredServer[] = [];
+  for (const pluginName of opts.enabledPlugins ?? []) {
+    const manifest = readPluginManifest(opts.home, pluginName, warnings);
+    if (!manifest?.servers) continue;
+    for (const [serverName, config] of Object.entries(manifest.servers)) {
+      // Server name format: plugin_<plugin>_<server>
+      const fullName = `plugin_${pluginName}_${serverName}`;
+      plugin.push({
+        name: fullName,
+        scope: "plugin",
+        config,
+        file: join(opts.home, ".claude", "plugins", pluginName, "manifest.json"),
+      });
+    }
+  }
+
   const byName = new Map<string, DiscoveredServer>();
-  for (const s of [...user, ...proj, ...local]) byName.set(s.name, s);
+  for (const s of [...user, ...proj, ...local, ...plugin]) byName.set(s.name, s);
   return { servers: [...byName.values()], warnings };
 }

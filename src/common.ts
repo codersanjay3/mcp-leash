@@ -12,7 +12,9 @@ import {
 } from "./settings.js";
 import type { DiscoveredServer, Scope } from "./types.js";
 
-export const SCOPES: Scope[] = ["user", "project", "local"];
+export const SCOPES: Scope[] = ["user", "project", "local", "plugin"];
+export const SETTINGS_SCOPES: Scope[] = ["user", "project", "local"];
+export const LOCK_SCOPES: Scope[] = ["user", "project", "local"];
 
 export interface ScanResult {
   project: string;
@@ -34,7 +36,7 @@ export interface ScanOpts {
 /** Names of plugins enabled in any settings file that applies to this project. */
 export function enabledPlugins(ctx: Ctx, project: string): string[] {
   const names = new Set<string>();
-  for (const scope of SCOPES) {
+  for (const scope of SETTINGS_SCOPES) {
     try {
       const v = readSettingsFile(settingsPathFor(scope, ctx.home, project)).enabledPlugins;
       if (!v || typeof v !== "object" || Array.isArray(v)) continue;
@@ -47,9 +49,11 @@ export function enabledPlugins(ctx: Ctx, project: string): string[] {
 }
 
 export async function runScan(ctx: Ctx, opts: ScanOpts): Promise<ScanResult> {
+  const plugins = enabledPlugins(ctx, opts.project);
   const { servers: discovered, warnings } = discoverServers({
     home: ctx.home,
     project: opts.project,
+    enabledPlugins: plugins,
   });
 
   let trustProject = opts.trustProject === true;
@@ -71,19 +75,13 @@ export async function runScan(ctx: Ctx, opts: ScanOpts): Promise<ScanResult> {
     trustProject,
   });
 
-  const plugins = enabledPlugins(ctx, opts.project);
-  if (plugins.length > 0) {
-    warnings.push(
-      `${plugins.length} enabled plugin${plugins.length === 1 ? "" : "s"} (${plugins.join(", ")}) may provide MCP servers (mcp__plugin_*) that mcp-leash does not cover yet: their tools are not scanned or locked`,
-    );
-  }
   return { project: opts.project, discovered, servers, warnings };
 }
 
 /** Rules from every settings file that applies to this project (unreadable files are skipped). */
 export function existingRules(ctx: Ctx, project: string): RuleSets {
   const list: RuleSets[] = [];
-  for (const scope of SCOPES) {
+  for (const scope of SETTINGS_SCOPES) {
     try {
       const s: Settings = readSettingsFile(settingsPathFor(scope, ctx.home, project));
       list.push(rulesOf(s));

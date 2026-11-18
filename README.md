@@ -110,11 +110,10 @@ Avoid patterns with nested quantifiers such as `(x+)+`: they can backtrack catas
 
 **Does it change tool behaviour or proxy calls?** No. It only edits permission rules and registers a hook.
 
-**What about plugin-provided MCP servers?** Not covered yet (their tools are named `mcp__plugin_<plugin>_<server>__<tool>`). If any `enabledPlugins` are found in your settings, `scan` and `lock` print a warning saying so. You can write rules for them in `rules.json` by hand.
+**What about plugin-provided MCP servers?** They are now discovered from installed plugin manifests (in `~/.claude/plugins/<plugin>/manifest.json`) when the plugin is enabled in your settings (`enabledPlugins`). Their tools are named `mcp__plugin_<plugin>_<server>__<tool>` and are scanned and locked like any other server.
 
 ## Limitations
 
-- Plugin-provided MCP servers (`mcp__plugin_*`) are not discovered, scanned or locked.
 - `--scope project` writes an absolute, machine-specific hook path into a file you may commit; `lock` warns about it.
 - A tool that already has a user `allow` rule gets your new `ask`/`deny` on top (deny and ask win over allow); `lock` lists these as `overrides your allow` in the diff.
 - Argument rules look at the first 2048 characters of an argument only.

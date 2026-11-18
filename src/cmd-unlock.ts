@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import pc from "picocolors";
 import { type LockDeps, printDiff } from "./cmd-lock.js";
-import { approve, isScope, SCOPES } from "./common.js";
+import { approve, LOCK_SCOPES } from "./common.js";
 import type { Ctx } from "./paths.js";
 import {
   backupFile,
@@ -31,8 +31,8 @@ export async function unlockCommand(
     strict: true,
   });
   const scope = values.scope as string;
-  if (!isScope(scope)) {
-    console.error(`--scope must be one of: ${SCOPES.join(", ")}`);
+  if (!LOCK_SCOPES.includes(scope as Scope)) {
+    console.error(`--scope must be one of: ${LOCK_SCOPES.join(", ")}`);
     return 2;
   }
   const ask = deps.approve ?? approve;

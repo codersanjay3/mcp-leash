@@ -1,5 +1,5 @@
 export type Risk = "critical" | "write" | "read" | "unknown";
-export type Scope = "user" | "project" | "local";
+export type Scope = "user" | "project" | "local" | "plugin";
 export type Level = "strict" | "balanced";
 
 export interface Annotations {
