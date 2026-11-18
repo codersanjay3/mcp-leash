@@ -3,7 +3,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import pc from "picocolors";
-import { approve, existingRules, isScope, runScan, SCOPES } from "./common.js";
+import { approve, existingRules, isScope, LOCK_SCOPES, runScan } from "./common.js";
 import { normalizeServerName } from "./discovery.js";
 import type { Ctx } from "./paths.js";
 import { defaultRulesFor, matchPreset } from "./presets/index.js";
@@ -85,8 +85,8 @@ export async function lockCommand(argv: string[], ctx: Ctx, deps: LockDeps = {})
   });
   const ask = deps.approve ?? approve;
   const scope = values.scope as string;
-  if (!isScope(scope)) {
-    console.error(`--scope must be one of: ${SCOPES.join(", ")}`);
+  if (!LOCK_SCOPES.includes(scope as Scope)) {
+    console.error(`--scope must be one of: ${LOCK_SCOPES.join(", ")}`);
     return 2;
   }
   const level = values.level as string;

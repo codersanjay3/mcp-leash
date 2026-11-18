@@ -12,12 +12,16 @@ import {
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { lockCommand } from "../src/cmd-lock.js";
 import { logCommand } from "../src/cmd-log.js";
 import { unlockCommand } from "../src/cmd-unlock.js";
 import type { Ctx } from "../src/paths.js";
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const FAKE_SERVER = join(ROOT, "test/fixtures/fake-server.mjs");
 
 let root: string;
 let ctx: Ctx;
@@ -177,10 +181,22 @@ describe("lock output", () => {
     expect(out.join("\n")).toMatch(/mcp__github__merge_pull_request.*overrides your allow/);
   });
 
-  it("warns about enabled plugins whose MCP servers are not covered", async () => {
-    seed({ enabledPlugins: { "p@m": true } });
-    await lock();
-    expect(err.join("\n")).toMatch(/mcp__plugin_/);
+  it("discovers and covers plugin-provided MCP servers", async () => {
+    const pluginDir = join(ctx.home, ".claude", "plugins", "test-plugin");
+    mkdirSync(pluginDir, { recursive: true });
+    writeFileSync(
+      join(pluginDir, "manifest.json"),
+      JSON.stringify({
+        servers: {
+          "server-a": { command: "node", args: [FAKE_SERVER] },
+        },
+      }),
+    );
+    seed({ enabledPlugins: { "test-plugin": true } });
+    await lockCommand(["--yes", "--project", proj], ctx);
+    const settings = read(settingsFile());
+    // plugin name "test-plugin" and server "server-a" keep hyphens after normalization
+    expect(settings.permissions.deny).toContain("mcp__plugin_test-plugin_server-a__delete_thing");
   });
 
   it("warns about nested-quantifier patterns in rules.json (lock and log)", async () => {

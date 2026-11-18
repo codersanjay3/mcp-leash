@@ -226,20 +226,30 @@ describe("runScan trust handling and plugin warning", () => {
     expect(existsSync(join(root, "m"))).toBe(true);
   });
 
-  it("warns that plugin-provided MCP servers (mcp__plugin_*) are not covered", async () => {
+  it("discovers plugin-provided MCP servers from manifests", async () => {
+    const pluginDir = join(home, ".claude", "plugins", "foo-market");
+    mkdirSync(pluginDir, { recursive: true });
+    writeFileSync(
+      join(pluginDir, "manifest.json"),
+      JSON.stringify({
+        servers: {
+          "server-1": { command: "node", args: [FAKE] },
+        },
+      }),
+    );
     writeFileSync(
       join(home, ".claude", "settings.json"),
-      JSON.stringify({ enabledPlugins: { "foo@market": true, "off@market": false } }),
+      JSON.stringify({ enabledPlugins: { "foo-market": true, "off-market": false } }),
     );
     const r = await runScan(ctx(), { project: proj, offline: true });
-    const w = r.warnings.find((x) => x.includes("mcp__plugin_"));
-    expect(w).toBeDefined();
-    expect(w).toContain("foo@market");
-    expect(w).not.toContain("off@market");
+    const pluginServer = r.discovered.find((s) => s.name === "plugin_foo-market_server-1");
+    expect(pluginServer).toBeDefined();
+    expect(pluginServer?.scope).toBe("plugin");
+    expect(r.warnings.some((x) => x.includes("mcp__plugin_"))).toBe(false);
   });
 
-  it("no plugin warning when no plugins are enabled", async () => {
+  it("no plugin servers when no plugins are enabled", async () => {
     const r = await runScan(ctx(), { project: proj, offline: true });
-    expect(r.warnings.some((x) => x.includes("mcp__plugin_"))).toBe(false);
+    expect(r.discovered.some((s) => s.scope === "plugin")).toBe(false);
   });
 });

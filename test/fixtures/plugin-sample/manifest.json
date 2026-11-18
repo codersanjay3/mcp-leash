@@ -1,0 +1,13 @@
+{
+  "name": "sample-plugin",
+  "servers": {
+    "server-a": {
+      "command": "node",
+      "args": ["../fake-server.mjs"]
+    },
+    "server-b": {
+      "type": "http",
+      "url": "https://example.com/mcp"
+    }
+  }
+}
